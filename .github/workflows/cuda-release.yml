@@ -1,0 +1,92 @@
+name: Optimized CUDA Release
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-cuda:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cuda_arch: ["75", "86", "89"]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'ggml-org/llama.cpp'
+          ref: 'master'
+
+      - name: Setup CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.36
+        id: cuda-toolkit
+        with:
+          cuda: '13.2.0'
+
+      - name: Verify CUDA Installation
+        run: |
+          echo "Installed cuda version is: ${{steps.cuda-toolkit.outputs.cuda}}"
+          echo "Cuda install location: ${{steps.cuda-toolkit.outputs.CUDA_PATH}}"
+          nvcc -V
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang ninja-build cmake build-essential
+
+      - name: Build with CMake
+        run: |
+          cmake -B build -G "Ninja" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_C_FLAGS="-flto -march=x86-64-v3" \
+            -DCMAKE_CXX_FLAGS="-flto -march=x86-64-v3" \
+            -DLLAMA_CURL=OFF \
+            -DCMAKE_INSTALL_RPATH='$ORIGIN' \
+            -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+            -DGGML_NATIVE=OFF \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF \
+            -DGGML_CUDA=ON \
+            -DCMAKE_CUDA_ARCHITECTURES="${{ matrix.cuda_arch }}" \
+            -DCMAKE_CUDA_FLAGS="-allow-unsupported-compiler"
+
+          ninja -C build
+
+      - name: Pack artifacts
+        run: |
+          mkdir -p dist
+          cp build/bin/* dist/
+          tar -czvf llama-ubuntu-x64-cuda${{ matrix.cuda_arch }}.tar.gz -C dist .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-cuda${{ matrix.cuda_arch }}
+          path: llama-ubuntu-x64-cuda${{ matrix.cuda_arch }}.tar.gz
+
+  release:
+    needs: build-cuda
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-${{ steps.date.outputs.date }}
+          name: "Optimized CUDA Build (${{ steps.date.outputs.date }})"
+          files: artifacts/*.tar.gz
