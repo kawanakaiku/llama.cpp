@@ -1,4 +1,4 @@
-name: Optimized CUDA Release
+name: Optimized Release
 
 on:
   schedule:
@@ -10,10 +10,19 @@ permissions:
 
 jobs:
   build-cuda:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        cuda_arch: ["75", "86", "89"]
+        include:
+          - cuda_arch: "75"
+            cuda_version: "12.8.2"
+            os: ubuntu-22.04
+          - cuda_arch: "86"
+            cuda_version: "13.2.0"
+            os: ubuntu-latest
+          - cuda_arch: "89"
+            cuda_version: "13.2.0"
+            os: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +34,7 @@ jobs:
         uses: Jimver/cuda-toolkit@v0.2.36
         id: cuda-toolkit
         with:
-          cuda: '13.2.0'
+          cuda: '${{ matrix.cuda_version }}'
 
       - name: Verify CUDA Installation
         run: |
