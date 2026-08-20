@@ -80,7 +80,7 @@ jobs:
           path: llama-ubuntu-x64-cuda${{ matrix.cuda_arch }}.tar.gz
 
   build-cpu:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
