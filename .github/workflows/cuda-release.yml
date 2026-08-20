@@ -70,8 +70,49 @@ jobs:
           name: artifact-cuda${{ matrix.cuda_arch }}
           path: llama-ubuntu-x64-cuda${{ matrix.cuda_arch }}.tar.gz
 
+  build-cpu:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang ninja-build cmake build-essential
+
+      - name: Build with CMake
+        run: |
+          cmake -B build-cpu -G "Ninja" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=gcc \
+            -DCMAKE_CXX_COMPILER=g++ \
+            -DCMAKE_C_FLAGS="-flto -march=x86-64-v3" \
+            -DCMAKE_CXX_FLAGS="-flto -march=x86-64-v3" \
+            -DLLAMA_CURL=OFF \
+            -DCMAKE_INSTALL_RPATH='$ORIGIN' \
+            -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
+            -DGGML_NATIVE=ON \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DLLAMA_BUILD_EXAMPLES=OFF
+
+          cmake --build build-cpu --config Release
+
+      - name: Pack artifacts
+        run: |
+          mkdir -p dist
+          find build-cpu -name "*.so" -exec cp {} dist/ \;
+          if [ -d "build-cpu/bin" ]; then cp build-cpu/bin/* dist/ 2>/dev/null || true; fi
+          tar -czvf llama-ubuntu-x64-cpu.tar.gz -C dist .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: artifact-cpu
+          path: llama-ubuntu-x64-cpu.tar.gz
+
   release:
-    needs: build-cuda
+    needs: [build-cuda, build-cpu]
     runs-on: ubuntu-latest
     steps:
       - name: Get current date
@@ -88,5 +129,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: nightly-${{ steps.date.outputs.date }}
-          name: "Optimized CUDA Build (${{ steps.date.outputs.date }})"
+          name: "Optimized Build (${{ steps.date.outputs.date }})"
           files: artifacts/*.tar.gz
