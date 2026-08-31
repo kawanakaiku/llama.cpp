@@ -17,3 +17,11 @@ jobs:
           
       - name: Setup upterm session
         uses: owenthereal/action-upterm@v1
+
+      - name: Create GitHub Release and Upload Artifact
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: test
+          name: My Artifact
+          files: |
+            /home/runner/my-artifact
