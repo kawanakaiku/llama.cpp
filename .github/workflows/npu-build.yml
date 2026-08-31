@@ -46,9 +46,9 @@ jobs:
           cp litert/ci/aot_lnl_linux.py litert/ci/fix_tied_lm_head.py \
              litert/ci/convert_npu_friendly.py /home/runner/build/
           if [ "${{ inputs.mode }}" = "npu_friendly" ]; then
-            # 先に通常ビルドで重みと参照メタデータを揃えてから、パッチ版で焼き直す
+            # 重みと参照メタデータだけ用意する。通常ビルドまでやると 4B は量子化で OOM(143)。
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
-                 dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" True True "-base" 2>&1 | tee build.log
+                 dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" True True "-base" 1 2>&1 | tee build.log
             bash litert/ci/run_npu_friendly.sh "${{ inputs.model_size }}" "-nodus-nohlfb" 2>&1 | tee -a build.log
           else
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
