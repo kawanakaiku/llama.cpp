@@ -21,7 +21,7 @@ $V/python "$ROOT/convert_npu_friendly.py" \
   --quantize=dynamic_int8 \
   --mask_as_input=True \
   --transpose_kv_cache=False \
-  --no_dus=True --no_hlfb=True
+  --kv_update=mask --no_hlfb=True
 TFL=$(ls "$ROOT/out"/*.tflite | head -1)
 ls -la "$TFL"
 
