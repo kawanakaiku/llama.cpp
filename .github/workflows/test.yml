@@ -15,5 +15,5 @@ jobs:
           echo "${{ secrets.KEY }}" > ~/.ssh/authorized_keys
           chmod 600 ~/.ssh/authorized_keys
           
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
+      - name: Setup upterm session
+        uses: owenthereal/action-upterm@v1
