@@ -39,7 +39,9 @@ jobs:
           df -h /
 
       - name: ビルド
+        shell: bash
         run: |
+          set -o pipefail
           mkdir -p /home/runner/build
           cp litert/ci/aot_lnl_linux.py litert/ci/fix_tied_lm_head.py \
              litert/ci/convert_npu_friendly.py /home/runner/build/
