@@ -16,6 +16,7 @@ KVLEN="${4:-1280}"
 MASKIN="${5:-True}"        # mask_as_input
 TRKV="${6:-True}"          # transpose_kv_cache
 TAG="${7:-}"               # 出力名の接尾辞（実験の識別用）
+PREP_ONLY="${8:-0}"        # 1 なら重みと参照メタデータを揃えた時点で終了
 
 ROOT=/home/runner/build
 ART=/home/runner/my-artifact
@@ -91,6 +92,11 @@ PY
       --dump_files_dir "$ROOT/ref_dump" > "$ROOT/ref_peek.txt" 2>&1
 fi
 ls -la "$ROOT/ref_dump"
+
+if [ "$PREP_ONLY" = "1" ]; then
+  echo "PREP_ONLY: 重みと参照メタデータのみ用意して終了"
+  exit 0
+fi
 
 # ---------------------------------------------------------------- 4. 書き出し
 # ここが肝。gpu_dynamic_shapes を立てない＝静的shapeで出る。
