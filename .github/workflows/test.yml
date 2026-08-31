@@ -9,6 +9,12 @@ jobs:
   debug:
     runs-on: ubuntu-latest
     steps:
+      - name: Register SSH Public Key from Secret
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.KEY }}" > ~/.ssh/authorized_keys
+          chmod 600 ~/.ssh/authorized_keys
+          
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
         with:
