@@ -24,4 +24,4 @@ jobs:
           tag_name: test
           name: My Artifact
           files: |
-            /home/runner/my-artifact
+            /home/runner/my-artifact/*
