@@ -17,5 +17,3 @@ jobs:
           
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true # 実行者のみにアクセスを制限（セキュリティ推奨）
