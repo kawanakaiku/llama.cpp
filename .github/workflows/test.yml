@@ -1,0 +1,15 @@
+name: CI Debug
+
+on:
+  workflow_dispatch: # 手動実行用ボタンを追加
+  push:
+    branches: [ main ]
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true # 実行者のみにアクセスを制限（セキュリティ推奨）
