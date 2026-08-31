@@ -1,0 +1,71 @@
+name: NPU litertlm build
+
+# Intel NPU (Lunar Lake) 向けの .litertlm を焼いて Release に上げる。
+# upterm の対話セッションは勝手に切れるので、全部このジョブの中で完結させる。
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_size:
+        description: "Qwen3 のサイズ"
+        type: choice
+        default: "0.6b"
+        options: ["0.6b", "1.7b", "4b"]
+      mode:
+        description: "normal=既定の書き出し / npu_friendly=DUSとHLFBを潰した書き出し"
+        type: choice
+        default: "npu_friendly"
+        options: ["npu_friendly", "normal"]
+      kv_cache_max_len:
+        description: "KV キャッシュ長（実質のコンテキスト長）"
+        default: "1280"
+      tag:
+        description: "Release のタグ"
+        default: "npu"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ディスクを空ける
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          df -h /
+
+      - name: ビルド
+        run: |
+          mkdir -p /home/runner/build
+          cp litert/ci/aot_lnl_linux.py litert/ci/fix_tied_lm_head.py \
+             litert/ci/convert_npu_friendly.py /home/runner/build/
+          if [ "${{ inputs.mode }}" = "npu_friendly" ]; then
+            # 先に通常ビルドで重みと参照メタデータを揃えてから、パッチ版で焼き直す
+            bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
+                 dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" True True "-base" 2>&1 | tee build.log
+            bash litert/ci/run_npu_friendly.sh "${{ inputs.model_size }}" "-nodus-nohlfb" 2>&1 | tee -a build.log
+          else
+            bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
+                 dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" 2>&1 | tee build.log
+          fi
+          ls -la /home/runner/my-artifact/
+
+      - name: ログ
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ inputs.model_size }}-${{ inputs.mode }}
+          path: build.log
+
+      - name: リリース
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: "Qwen3 for Intel NPU (Lunar Lake)"
+          body: "litert-torch 書き出し → aot_compile(IntelOpenVINO_LNL) → litert-lm-builder。1.9GB ずつ分割。"
+          files: /home/runner/my-artifact/*
