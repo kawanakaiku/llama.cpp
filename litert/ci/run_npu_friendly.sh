@@ -12,6 +12,7 @@ PREFILL="${4:-128}"
 KVDTYPE="${5:-float32}"
 WINT4="${6:-False}"
 OVCFG="${7:-}"          # OpenVINO の追加プロパティ (KEY=VALUE,...)
+NOPREFILL="${8:-False}"
 mkdir -p "$ART"; cd "$ROOT"
 
 echo "==================== 書き出し (パッチ版) ===================="
@@ -26,7 +27,7 @@ $V/python "$ROOT/convert_npu_friendly.py" \
   --quantize=dynamic_int8 \
   --mask_as_input=True \
   --transpose_kv_cache=False \
-  --kv_update=mask --no_hlfb=True --kv_dtype="$KVDTYPE" --weights_int4_channelwise="$WINT4"
+  --kv_update=mask --no_hlfb=True --kv_dtype="$KVDTYPE" --weights_int4_channelwise="$WINT4" --no_prefill="$NOPREFILL"
 TFL=$(ls "$ROOT/out"/*.tflite | head -1)
 ls -la "$TFL"
 
