@@ -11,6 +11,7 @@ NAME="${2:-gemma-4-E2B-it}"
 CACHE_LEN="${3:-4096}"
 PREFILL="${4:-128}"
 RECIPE="${5:-dynamic_wi8_afp32}"
+EXTRA="${6:-}"          # export() へ追加で渡す引数（空白区切り）
 mkdir -p "$ART"; cd "$ROOT"
 
 echo "==================== 環境 ===================="
@@ -62,7 +63,7 @@ $V/python "$ROOT/export_hf_run.py" \
   --bundle_litert_lm=True \
   --aot_backend=intel_openvino \
   --aot_soc_model=LNL \
-  --keep_temporary_files=True
+  --keep_temporary_files=True $EXTRA
 echo "EXPORT_HF_OK"
 ls -la "$ROOT/hf_out"
 
