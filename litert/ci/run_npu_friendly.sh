@@ -33,7 +33,7 @@ ls -la "$TFL"
 echo "==================== AOT ===================="
 rm -rf "$ROOT/aot"
 $V/python "$ROOT/aot_lnl_linux.py" "$TFL" --out "$ROOT/aot" \
-  --config optimize_fq_after_matmul=true \n  ${OVCFG:+--config "$OVCFG"}
+  --config optimize_fq_after_matmul=true ${OVCFG:+--config "$OVCFG"}
 NPUTFL=$(ls "$ROOT/aot"/*.tflite | head -1)
 ls -la "$NPUTFL"
 
