@@ -76,7 +76,7 @@ jobs:
             bash litert/ci/run_npu_friendly.sh "${{ inputs.model_size }}" "-nodus-nohlfb" "${{ inputs.kv_cache_max_len }}" 128 "${{ inputs.kv_dtype }}" "${{ inputs.weights_int4 }}" "${{ inputs.ov_config }}" "${{ inputs.no_prefill }}" 2>&1 | tee -a build.log
           elif [ "${{ inputs.mode }}" = "export_hf" ]; then
             # 公式の export_hf 経路。AOT まで統合されていて gemma-3n/4 系も通る。
-            cp litert/ci/patch_gemma4.py /home/runner/build/
+            cp litert/ci/patch_gemma4.py litert/ci/export_hf_run.py /home/runner/build/
             bash litert/ci/run_export_hf.sh "${{ inputs.hf_model }}" "${{ inputs.hf_name }}" "${{ inputs.kv_cache_max_len }}" 2>&1 | tee build.log
           else
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
