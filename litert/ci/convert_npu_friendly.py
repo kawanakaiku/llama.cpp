@@ -21,6 +21,7 @@ from absl import app, flags
 from litert_torch.generative.examples.qwen import qwen3
 from litert_torch.generative.layers import kv_cache as kv_utils
 from litert_torch.generative.layers import scaled_dot_product_attention as sdpa_lib
+from litert_torch.generative.quantize import quant_attrs, quant_recipes
 from litert_torch.generative.utilities import converter
 
 flags_ = converter.define_conversion_flags("qwen")
@@ -31,6 +32,9 @@ _KV_UPDATE = flags.DEFINE_enum("kv_update", "mask", ["dus", "index_copy", "mask"
 _NO_HLFB = flags.DEFINE_bool("no_hlfb", True, "STABLEHLO_COMPOSITE を出さない")
 _KV_DTYPE = flags.DEFINE_enum("kv_dtype", "float32", ["float32", "float16"],
                               "KV キャッシュの型。fp16 にすると転送量が半分になる")
+_W_INT4 = flags.DEFINE_bool("weights_int4_channelwise", False,
+                            "重みを int4 チャンネル単位にする。"
+                            "ブロック単位の int4 は plugin が拒否するがこちらは未検証")
 
 _BUILDER = {"0.6b": qwen3.build_0_6b_model,
             "1.7b": qwen3.build_1_7b_model,
@@ -132,6 +136,21 @@ def main(_):
 
         setattr(qwen3, name, patched)
         print("patched: enable_hlfb=False")
+
+    if _W_INT4.value:
+        # 既定の書き出しは重みが二重に入る（元の int8 + NPU ブロブの fp16）。
+        # 元を int4 にすれば両方が縮む。ブロック単位は
+        # "Unsupported Quantization type 3" で弾かれたのでチャンネル単位で試す。
+        orig_recipe = converter.get_quant_recipe_from_flag
+
+        def _recipe(name, model_config):
+            return quant_recipes.full_dynamic_recipe(
+                mcfg=model_config,
+                weight_dtype=quant_attrs.Dtype.INT4,
+                granularity=quant_attrs.Granularity.CHANNELWISE)
+
+        converter.get_quant_recipe_from_flag = _recipe
+        print("patched: 重みを int4 チャンネル単位に")
 
     converter.build_and_convert_to_tflite_from_flags(_BUILDER[size])
 
