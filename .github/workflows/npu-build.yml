@@ -15,7 +15,7 @@ on:
         description: "normal=既定の書き出し / npu_friendly=DUSとHLFBを潰した書き出し"
         type: choice
         default: "npu_friendly"
-        options: ["npu_friendly", "normal"]
+        options: ["npu_friendly", "normal", "export_hf"]
       kv_cache_max_len:
         description: "KV キャッシュ長（実質のコンテキスト長）"
         default: "1280"
@@ -37,6 +37,12 @@ on:
         type: choice
         default: "False"
         options: ["False", "True"]
+      hf_model:
+        description: "export_hf 用の HF モデル ID"
+        default: "google/gemma-4-E2B-it"
+      hf_name:
+        description: "export_hf 用の出力名"
+        default: "gemma-4-E2B-it"
       tag:
         description: "Release のタグ"
         default: "npu"
@@ -68,6 +74,10 @@ jobs:
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
                  dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" True True "-base" 1 2>&1 | tee build.log
             bash litert/ci/run_npu_friendly.sh "${{ inputs.model_size }}" "-nodus-nohlfb" "${{ inputs.kv_cache_max_len }}" 128 "${{ inputs.kv_dtype }}" "${{ inputs.weights_int4 }}" "${{ inputs.ov_config }}" "${{ inputs.no_prefill }}" 2>&1 | tee -a build.log
+          elif [ "${{ inputs.mode }}" = "export_hf" ]; then
+            # 公式の export_hf 経路。AOT まで統合されていて gemma-3n/4 系も通る。
+            cp litert/ci/patch_gemma4.py /home/runner/build/
+            bash litert/ci/run_export_hf.sh "${{ inputs.hf_model }}" "${{ inputs.hf_name }}" "${{ inputs.kv_cache_max_len }}" 2>&1 | tee build.log
           else
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
                  dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" 2>&1 | tee build.log
