@@ -9,6 +9,7 @@ SIZE="${1:-0.6b}"
 TAG="${2:--nodus-nohlfb}"
 KVLEN="${3:-1280}"
 PREFILL="${4:-128}"
+KVDTYPE="${5:-float32}"
 mkdir -p "$ART"; cd "$ROOT"
 
 echo "==================== 書き出し (パッチ版) ===================="
@@ -23,7 +24,7 @@ $V/python "$ROOT/convert_npu_friendly.py" \
   --quantize=dynamic_int8 \
   --mask_as_input=True \
   --transpose_kv_cache=False \
-  --kv_update=mask --no_hlfb=True
+  --kv_update=mask --no_hlfb=True --kv_dtype="$KVDTYPE"
 TFL=$(ls "$ROOT/out"/*.tflite | head -1)
 ls -la "$TFL"
 
