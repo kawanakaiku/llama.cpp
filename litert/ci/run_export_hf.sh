@@ -50,7 +50,7 @@ $V/python "$ROOT/patch_gemma4.py"
 
 echo "==================== 書き出し + AOT ===================="
 rm -rf "$ROOT/hf_out"
-$V/python -m litert_torch.generative.export_hf.export_main \
+$V/python "$ROOT/export_hf_run.py" \
   --model="$HF_MODEL" \
   --output_dir="$ROOT/hf_out" \
   --task=text_generation \
