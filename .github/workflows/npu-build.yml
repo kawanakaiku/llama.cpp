@@ -32,6 +32,11 @@ on:
       ov_config:
         description: "OpenVINO の追加プロパティ 例: CACHE_MODE=OPTIMIZE_SIZE"
         default: ""
+      no_prefill:
+        description: "prefill 署名を作らない（モデルがほぼ半分になる）"
+        type: choice
+        default: "False"
+        options: ["False", "True"]
       tag:
         description: "Release のタグ"
         default: "npu"
@@ -62,7 +67,7 @@ jobs:
             # 重みと参照メタデータだけ用意する。通常ビルドまでやると 4B は量子化で OOM(143)。
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
                  dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" True True "-base" 1 2>&1 | tee build.log
-            bash litert/ci/run_npu_friendly.sh "${{ inputs.model_size }}" "-nodus-nohlfb" "${{ inputs.kv_cache_max_len }}" 128 "${{ inputs.kv_dtype }}" "${{ inputs.weights_int4 }}" "${{ inputs.ov_config }}" 2>&1 | tee -a build.log
+            bash litert/ci/run_npu_friendly.sh "${{ inputs.model_size }}" "-nodus-nohlfb" "${{ inputs.kv_cache_max_len }}" 128 "${{ inputs.kv_dtype }}" "${{ inputs.weights_int4 }}" "${{ inputs.ov_config }}" "${{ inputs.no_prefill }}" 2>&1 | tee -a build.log
           else
             bash litert/ci/build_npu_litertlm.sh "${{ inputs.model_size }}" \
                  dynamic_int8 128 "${{ inputs.kv_cache_max_len }}" 2>&1 | tee build.log
