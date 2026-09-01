@@ -109,16 +109,14 @@ def main(_):
             def _mk(f):
                 @functools.wraps(f)
                 def w(q, k, v, *a, **kw):
+                    # キャッシュは fp16 のまま持って転送量を半分にするが、
+                    # 演算は q の型（fp32）に合わせて上げる。
+                    # 逆向き（q を fp16 に落とす）だと GQA の tfl.broadcast_to が
+                    # fp16 で legalize できずに変換が落ちる。
                     if k.dtype != q.dtype:
-                        q = q.to(k.dtype)
+                        k = k.to(q.dtype)
                     if v.dtype != q.dtype:
                         v = v.to(q.dtype)
-                    for key in ("mask", "attn_mask"):
-                        if kw.get(key) is not None and kw[key].dtype != q.dtype:
-                            kw[key] = kw[key].to(q.dtype)
-                    a = tuple(x.to(q.dtype) if hasattr(x, "dtype")
-                              and x.dtype.is_floating_point and x.dtype != q.dtype
-                              else x for x in a)
                     return f(q, k, v, *a, **kw)
                 return w
 
