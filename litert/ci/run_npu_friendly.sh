@@ -7,6 +7,8 @@ ART=/home/runner/my-artifact
 V=$ROOT/.venv/bin
 SIZE="${1:-0.6b}"
 TAG="${2:--nodus-nohlfb}"
+KVLEN="${3:-1280}"
+PREFILL="${4:-128}"
 mkdir -p "$ART"; cd "$ROOT"
 
 echo "==================== 書き出し (パッチ版) ===================="
@@ -16,8 +18,8 @@ $V/python "$ROOT/convert_npu_friendly.py" \
   --checkpoint_path="$ROOT/ckpt-$SIZE" \
   --output_path="$ROOT/out" \
   --output_name_prefix="qwen3-${SIZE}${TAG}" \
-  --prefill_seq_lens=128 \
-  --kv_cache_max_len=1280 \
+  --prefill_seq_lens="$PREFILL" \
+  --kv_cache_max_len="$KVLEN" \
   --quantize=dynamic_int8 \
   --mask_as_input=True \
   --transpose_kv_cache=False \
