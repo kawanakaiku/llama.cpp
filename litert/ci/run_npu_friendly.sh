@@ -11,6 +11,7 @@ KVLEN="${3:-1280}"
 PREFILL="${4:-128}"
 KVDTYPE="${5:-float32}"
 WINT4="${6:-False}"
+OVCFG="${7:-}"          # OpenVINO の追加プロパティ (KEY=VALUE,...)
 mkdir -p "$ART"; cd "$ROOT"
 
 echo "==================== 書き出し (パッチ版) ===================="
@@ -32,7 +33,7 @@ ls -la "$TFL"
 echo "==================== AOT ===================="
 rm -rf "$ROOT/aot"
 $V/python "$ROOT/aot_lnl_linux.py" "$TFL" --out "$ROOT/aot" \
-  --config optimize_fq_after_matmul=true
+  --config optimize_fq_after_matmul=true \n  ${OVCFG:+--config "$OVCFG"}
 NPUTFL=$(ls "$ROOT/aot"/*.tflite | head -1)
 ls -la "$NPUTFL"
 
