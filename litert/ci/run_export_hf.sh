@@ -12,6 +12,7 @@ CACHE_LEN="${3:-4096}"
 PREFILL="${4:-128}"
 RECIPE="${5:-dynamic_wi8_afp32}"
 EXTRA="${6:-}"          # export() へ追加で渡す引数（空白区切り）
+SPLITCACHE="${7:-True}"
 mkdir -p "$ART"; cd "$ROOT"
 
 echo "==================== 環境 ===================="
@@ -58,7 +59,7 @@ $V/python "$ROOT/export_hf_run.py" \
   --prefill_lengths="[$PREFILL]" \
   --cache_length="$CACHE_LEN" \
   --quantization_recipe="$RECIPE" \
-  --split_cache=True \
+  --split_cache=$SPLITCACHE \
   --externalize_embedder=True \
   --bundle_litert_lm=True \
   --aot_backend=intel_openvino \
