@@ -32,6 +32,11 @@ _KV_UPDATE = flags.DEFINE_enum("kv_update", "mask", ["dus", "index_copy", "mask"
 _NO_HLFB = flags.DEFINE_bool("no_hlfb", True, "STABLEHLO_COMPOSITE を出さない")
 _KV_DTYPE = flags.DEFINE_enum("kv_dtype", "float32", ["float32", "float16"],
                               "KV キャッシュの型。fp16 にすると転送量が半分になる")
+_NO_PREFILL = flags.DEFINE_bool("no_prefill", False,
+                                "prefill 署名を作らない。prefill と decode は"
+                                "それぞれ重みを丸ごと1本ずつ持つので、"
+                                "落とすとモデルがほぼ半分になる。"
+                                "プロンプトは decode を1トークンずつ回せばよい")
 _W_INT4 = flags.DEFINE_bool("weights_int4_channelwise", False,
                             "重みを int4 チャンネル単位にする。"
                             "ブロック単位の int4 は plugin が拒否するがこちらは未検証")
@@ -134,6 +139,13 @@ def main(_):
 
         setattr(qwen3, name, patched)
         print("patched: enable_hlfb=False")
+
+    if _NO_PREFILL.value:
+        # _add_signatures は prefill_seq_lens をループするだけなので、
+        # 空にすれば prefill 署名が作られない。
+        # mask_as_input=True ならマスク長の計算にも使われない。
+        flags.FLAGS.prefill_seq_lens = []
+        print("patched: prefill 署名を作らない（decode のみ）")
 
     if _W_INT4.value:
         # 既定の書き出しは重みが二重に入る（元の int8 + NPU ブロブの fp16）。
