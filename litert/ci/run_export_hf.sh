@@ -13,6 +13,25 @@ PREFILL="${4:-128}"
 RECIPE="${5:-dynamic_wi8_afp32}"
 mkdir -p "$ART"; cd "$ROOT"
 
+echo "==================== 環境 ===================="
+# export_hf モードは build_npu_litertlm.sh を通らないので、ここで venv を作る。
+if ! swapon --show | grep -q swapfile2; then
+  sudo fallocate -l 32G /swapfile2 && sudo chmod 600 /swapfile2
+  sudo mkswap /swapfile2 >/dev/null && sudo swapon /swapfile2
+fi
+free -g | sed -n '2p;3p'
+if [ ! -x "$V/python" ]; then
+  python3 -m venv "$ROOT/.venv"
+  $V/pip -q install -U pip
+  $V/pip -q install litert-lm-builder huggingface_hub tomli-w
+  $V/pip -q install tensorflow-cpu
+  $V/pip -q install --pre "openvino==2026.3.0.dev20260622" --extra-index-url https://storage.openvinotoolkit.org/simple/wheels/nightly
+  $V/pip -q install ai-edge-litert ai-edge-litert-sdk-intel
+  # export_hf は新しめの機能なので git から入れる
+  $V/pip -q install "git+https://github.com/google-ai-edge/litert-torch.git"
+fi
+$V/python -c "import litert_torch, ai_edge_litert, ai_edge_litert_sdk_intel; print('deps ok')"
+
 echo "==================== export_hf があるか ===================="
 if ! $V/python -c "import litert_torch.generative.export_hf.export as e; print('ok')" 2>/dev/null; then
   echo "PyPI 版に export_hf が無いので git から入れ直す"
