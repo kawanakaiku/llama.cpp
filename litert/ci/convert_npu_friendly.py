@@ -28,6 +28,8 @@ _MODEL_SIZE = flags.DEFINE_enum("model_size", "0.6b", ["0.6b", "1.7b", "4b"],
 _KV_UPDATE = flags.DEFINE_enum("kv_update", "mask", ["dus", "index_copy", "mask"],
                                "KV キャッシュの更新方法")
 _NO_HLFB = flags.DEFINE_bool("no_hlfb", True, "STABLEHLO_COMPOSITE を出さない")
+_KV_DTYPE = flags.DEFINE_enum("kv_dtype", "float32", ["float32", "float16"],
+                              "KV キャッシュの型。fp16 にすると転送量が半分になる")
 
 _BUILDER = {"0.6b": qwen3.build_0_6b_model,
             "1.7b": qwen3.build_1_7b_model,
@@ -47,6 +49,7 @@ def _scatter_free_update(cache, input_pos, k_slice, v_slice):
     どれも NPU コンパイラが受け付ける。
     """
     def one(buf, sl):
+        sl = sl.to(buf.dtype)   # KV を fp16 にしたとき slice は fp32 で来る
         t = buf.shape[1]
         pos = input_pos.reshape(-1).to(torch.long)             # [S]
         idx = torch.arange(t, device=buf.device)               # [T]
@@ -72,6 +75,22 @@ def main(_):
         kv_utils._update_kv_impl = _scatter_free_update
         kv_utils._update_kv_base_impl = _scatter_free_update
         print("patched: KV 更新を one-hot マスク + 行列積に（scatter 系を消す）")
+
+    if _KV_DTYPE.value != "float32":
+        # 呼び出し側が dtype を渡していないだけなので、既定値ごと差し替える。
+        # 毎トークン 294MB の往復が律速なので、半分になるだけで効く。
+        import functools
+        dt = getattr(torch, _KV_DTYPE.value)
+        orig_from = kv_utils.KVCache.from_model_config.__func__
+
+        @classmethod
+        @functools.wraps(orig_from)
+        def _typed(cls, *a, **kw):
+            kw.setdefault("dtype", dt)
+            return orig_from(cls, *a, **kw)
+
+        kv_utils.KVCache.from_model_config = _typed
+        print(f"patched: KV キャッシュを {_KV_DTYPE.value} に")
 
     if _NO_HLFB.value:
         name = _CONFIG[size]
