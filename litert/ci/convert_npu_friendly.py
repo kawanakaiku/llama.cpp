@@ -20,6 +20,7 @@ from absl import app, flags
 
 from litert_torch.generative.examples.qwen import qwen3
 from litert_torch.generative.layers import kv_cache as kv_utils
+from litert_torch.generative.layers import scaled_dot_product_attention as sdpa_lib
 from litert_torch.generative.utilities import converter
 
 flags_ = converter.define_conversion_flags("qwen")
@@ -90,7 +91,35 @@ def main(_):
             return orig_from(cls, *a, **kw)
 
         kv_utils.KVCache.from_model_config = _typed
-        print(f"patched: KV キャッシュを {_KV_DTYPE.value} に")
+
+        # SDPA は q/k/v の型が揃っていないと弾く。
+        # キャッシュを fp16 のまま保って転送量を減らしたいので、q を合わせる。
+        for _n in ("scaled_dot_product_attention",
+                   "scaled_dot_product_attention_with_hlfb",
+                   "scaled_dot_product_attention_transposed",
+                   "scaled_dot_product_attention_transposed_with_hlfb"):
+            _f = getattr(sdpa_lib, _n, None)
+            if _f is None:
+                continue
+
+            def _mk(f):
+                @functools.wraps(f)
+                def w(q, k, v, *a, **kw):
+                    if k.dtype != q.dtype:
+                        q = q.to(k.dtype)
+                    if v.dtype != q.dtype:
+                        v = v.to(q.dtype)
+                    for key in ("mask", "attn_mask"):
+                        if kw.get(key) is not None and kw[key].dtype != q.dtype:
+                            kw[key] = kw[key].to(q.dtype)
+                    a = tuple(x.to(q.dtype) if hasattr(x, "dtype")
+                              and x.dtype.is_floating_point and x.dtype != q.dtype
+                              else x for x in a)
+                    return f(q, k, v, *a, **kw)
+                return w
+
+            setattr(sdpa_lib, _n, _mk(_f))
+        print(f"patched: KV キャッシュを {_KV_DTYPE.value} に / SDPA の型を合わせる")
 
     if _NO_HLFB.value:
         name = _CONFIG[size]
