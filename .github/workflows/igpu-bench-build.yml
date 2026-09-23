@@ -1,0 +1,45 @@
+name: igpu-bench-build
+on:
+  push:
+    branches: [igpu-bench-build]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { proj: whisper, repo: ggml-org/whisper.cpp, backend: vulkan, flags: "-DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DGGML_AVX2=ON" }
+          - { proj: whisper, repo: ggml-org/whisper.cpp, backend: cpu,    flags: "-DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_AVX_VNNI=ON -DGGML_FMA=ON -DGGML_F16C=ON" }
+          - { proj: qwentts, repo: ServeurpersoCom/qwentts.cpp, backend: vulkan, flags: "-DGGML_VULKAN=ON -DGGML_NATIVE=OFF -DGGML_AVX2=ON" }
+          - { proj: qwentts, repo: ServeurpersoCom/qwentts.cpp, backend: cpu,    flags: "-DGGML_NATIVE=OFF -DGGML_AVX2=ON -DGGML_AVX_VNNI=ON -DGGML_FMA=ON -DGGML_F16C=ON" }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ matrix.repo }}
+          submodules: recursive
+          path: src
+      - name: Vulkan SDK
+        if: matrix.backend == 'vulkan'
+        uses: humbletim/install-vulkan-sdk@v1.2
+        with:
+          version: 1.4.309.0
+          cache: true
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build
+        shell: cmd
+        run: |
+          cmake -S src -B build -G Ninja -DCMAKE_BUILD_TYPE=Release ${{ matrix.flags }}
+          cmake --build build -j 4
+      - name: Collect
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory out | Out-Null
+          Get-ChildItem build -Recurse -Include *.exe,*.dll | Copy-Item -Destination out -Force
+          git -C src rev-parse HEAD > out/COMMIT.txt
+          Get-ChildItem out | Select Name,Length
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.proj }}-${{ matrix.backend }}
+          path: out
