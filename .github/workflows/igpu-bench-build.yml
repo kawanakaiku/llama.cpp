@@ -26,7 +26,7 @@ jobs:
         run: |
           $v = "1.4.357.0"
           curl.exe -sL -o vk.exe "https://sdk.lunarg.com/sdk/download/$v/windows/vulkansdk-windows-X64-$v.exe"
-          Start-Process -Wait -FilePath .k.exe -ArgumentList "--root","C:\VulkanSDK\$v","--accept-licenses","--default-answer","--confirm-command","install"
+          Start-Process -Wait -FilePath (Resolve-Path vk.exe) -ArgumentList "--root","C:\VulkanSDK\$v","--accept-licenses","--default-answer","--confirm-command","install"
           "VULKAN_SDK=C:\VulkanSDK\$v" >> $env:GITHUB_ENV
           "C:\VulkanSDK\$v\Bin" >> $env:GITHUB_PATH
           Get-ChildItem "C:\VulkanSDK\$v" | Select Name
